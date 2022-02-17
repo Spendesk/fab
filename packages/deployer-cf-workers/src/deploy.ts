@@ -87,9 +87,9 @@ export const deployAssets: FabAssetsDeployer<ConfigTypes.CFWorkers> = async (
     log.continue(`🖤  ${file} (${pretty(body_stream.bytesRead)})🖤`)
   })
 
-  log.tick(`Done.`)
-
   await Promise.all(uploads)
+
+  log.tick(`Done.`)
 
   return `kv://${namespace.id}`
 }
