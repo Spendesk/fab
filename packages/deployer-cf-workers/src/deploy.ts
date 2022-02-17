@@ -21,10 +21,18 @@ export const deployBoth: FabDeployer<ConfigTypes.CFWorkers> = async (
   fab_path: string,
   package_dir: string,
   config: ConfigTypes.CFWorkers,
-  env_overrides: Map<string, FabSettings>
+  env_overrides: Map<string, FabSettings>,
+  defaultEnv: undefined | string
 ) => {
   const assets_url = await deployAssets(fab_path, package_dir, config)
-  return await deployServer(fab_path, package_dir, config, env_overrides, assets_url)
+  return await deployServer(
+    fab_path,
+    package_dir,
+    config,
+    env_overrides,
+    defaultEnv,
+    assets_url
+  )
 }
 
 export const deployAssets: FabAssetsDeployer<ConfigTypes.CFWorkers> = async (

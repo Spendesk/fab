@@ -132,7 +132,8 @@ export default class Deployer {
         file_path,
         package_dir,
         this.resolveEnvVars(deploy[assets_provider]!),
-        env_overrides
+        env_overrides,
+        undefined
       )
     }
 
@@ -209,6 +210,7 @@ export default class Deployer {
       package_dir,
       config,
       env_overrides,
+      undefined,
       assets_url
     )
   }
