@@ -1,0 +1,1 @@
+{"version":3,"file":"templateInjections.js","sourceRoot":"","sources":["../src/templateInjections.ts"],"names":[],"mappings":";;AAEA,sBAAsB;AACtB,kBAAe,CACb,OAAe,EACf,UAAkB,EAClB,aAAuC,EACvC,cAAgC,EAChC,EAAE,CAAC;IACD,OAAO;8BACmB,IAAI,CAAC,SAAS,CAAC,UAAU,CAAC;kCACtB,IAAI,CAAC,SAAS,CAAC,cAAc,CAAC;iCAC/B,IAAI,CAAC,SAAS,CAAC,MAAM,CAAC,WAAW,CAAC,aAAa,CAAC,CAAC;CACjF,CAAA"}
