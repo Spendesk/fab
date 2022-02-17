@@ -296,7 +296,7 @@ async function packageAndUpload(
     ({ environment }: any) => environment
   )
   for (const [env] of env_overrides) {
-    if (!environments.includes(service_response.result.environments)) {
+    if (!environments.includes(env)) {
       const create_environement_response = await api.post(
         `/accounts/${account_id}/workers/services/${script_name}/environments/production/copy/${env}`
       )
