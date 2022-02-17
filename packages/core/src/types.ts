@@ -176,7 +176,6 @@ export type FabServerDeployer<T extends ConfigTypes.Union> = (
   working_dir: string,
   config: T,
   env_overrides: Map<string, FabSettings>,
-  defaultEnv: undefined | string,
   assets_url: string
 ) => Promise<string | string[]>
 
@@ -190,8 +189,7 @@ export type FabDeployer<T extends ConfigTypes.Union> = (
   fab_path: string,
   working_dir: string,
   config: T,
-  env_overrides: Map<string, FabSettings>,
-  defaultEnv: undefined | string
+  env_overrides: Map<string, FabSettings>
 ) => Promise<string | string[]>
 
 export type FabDeployerExports<T extends ConfigTypes.Union> = {

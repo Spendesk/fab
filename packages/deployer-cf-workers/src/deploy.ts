@@ -21,18 +21,10 @@ export const deployBoth: FabDeployer<ConfigTypes.CFWorkers> = async (
   fab_path: string,
   package_dir: string,
   config: ConfigTypes.CFWorkers,
-  env_overrides: Map<string, FabSettings>,
-  defaultEnv: undefined | string
+  env_overrides: Map<string, FabSettings>
 ) => {
   const assets_url = await deployAssets(fab_path, package_dir, config)
-  return await deployServer(
-    fab_path,
-    package_dir,
-    config,
-    env_overrides,
-    defaultEnv,
-    assets_url
-  )
+  return await deployServer(fab_path, package_dir, config, env_overrides, assets_url)
 }
 
 export const deployAssets: FabAssetsDeployer<ConfigTypes.CFWorkers> = async (
@@ -107,7 +99,6 @@ export const deployServer: FabServerDeployer<ConfigTypes.CFWorkers> = async (
   package_dir: string,
   config: ConfigTypes.CFWorkers,
   env_overrides: Map<string, FabSettings>,
-  defaultEnv: undefined | string = 'production',
   assets_url: string
 ) => {
   const package_path = path.join(package_dir, 'cf-workers.js')
@@ -142,7 +133,6 @@ export const deployServer: FabServerDeployer<ConfigTypes.CFWorkers> = async (
     package_path,
     config,
     env_overrides,
-    defaultEnv,
     assets_url,
     api,
     account_id,
@@ -150,13 +140,7 @@ export const deployServer: FabServerDeployer<ConfigTypes.CFWorkers> = async (
   )
 
   if (workers_dev) {
-    return await publishOnWorkersDev(
-      api,
-      account_id,
-      script_name,
-      env_overrides,
-      defaultEnv
-    )
+    return await publishOnWorkersDev(api, account_id, script_name, env_overrides)
   } else {
     if ('routes' in config) {
       let promises = routes.map((r) => publishOnZoneRoute(api, zone_id, r, script_name))
@@ -240,7 +224,6 @@ async function packageAndUpload(
   package_path: string,
   config: ConfigTypes.CFWorkers,
   env_overrides: Map<string, FabSettings>,
-  defaultEnv: string,
   assets_url: string,
   api: CloudflareApi,
   account_id: string,
@@ -307,61 +290,46 @@ async function packageAndUpload(
       throw new FabDeployError(`Error getting the service, got response:
       ❤️${JSON.stringify(upload_response)}❤️`)
     }
-  } else {
-    const environments = service_response.result.environments.map(
-      ({ environment }: any) => environment
-    )
-    for (const [env] of env_overrides) {
-      if (!environments.includes(service_response.result.environments)) {
-        const create_environement_response = await api.post(
-          `/accounts/${account_id}/workers/services/${script_name}/${env}/environment/new`
-        )
+  }
 
-        if (!create_environement_response.success) {
-          throw new FabDeployError(`Error creating the environment, got response:
+  const environments = service_response.result.environments.map(
+    ({ environment }: any) => environment
+  )
+  for (const [env] of env_overrides) {
+    if (!environments.includes(service_response.result.environments)) {
+      const create_environement_response = await api.post(
+        `/accounts/${account_id}/workers/services/${script_name}/environments/production/copy/${env}`
+      )
+
+      if (!create_environement_response.success) {
+        throw new FabDeployError(`Error creating the environment, got response:
           ❤️${JSON.stringify(create_environement_response)}❤️`)
-        }
-
-        if (env !== defaultEnv) {
-          // TODO: check if it is needed
-          const copy_environement_response = await api.post(
-            `/accounts/${account_id}/workers/services/${script_name}/environments/${defaultEnv}/copy/${env}`
-          )
-
-          if (!copy_environement_response.success) {
-            throw new FabDeployError(`Error copying the environment, got response:
-          ❤️${JSON.stringify(copy_environement_response)}❤️`)
-          }
-        }
-
-        const body = new Multipart()
-        body.append(
-          'metadata',
-          JSON.stringify({
-            body_part: 'script',
-            bindings: [
-              ...bindings,
-              { type: 'plain_text', name: 'ENVIRONMENT', text: env },
-            ],
-          })
-        )
-        body.append('script', await fs.readFile(package_path, 'utf8'), {
-          contentType: 'application/javascript',
-        })
-
-        const upload_response = await api.put(
-          `/accounts/${account_id}/workers/services/${script_name}/environments/${env}`,
-          {
-            body: (body as unknown) as FormData,
-            headers: body.getHeaders(),
-          }
-        )
-
-        if (!upload_response) {
-          throw new FabDeployError(`Error uploading the service, got response:
-        ❤️${JSON.stringify(upload_response)}❤️`)
-        }
       }
+    }
+
+    const body = new Multipart()
+    body.append(
+      'metadata',
+      JSON.stringify({
+        body_part: 'script',
+        bindings: [...bindings, { type: 'plain_text', name: 'ENVIRONMENT', text: env }],
+      })
+    )
+    body.append('script', await fs.readFile(package_path, 'utf8'), {
+      contentType: 'application/javascript',
+    })
+
+    const upload_response = await api.put(
+      `/accounts/${account_id}/workers/services/${script_name}/environments/${env}`,
+      {
+        body: (body as unknown) as FormData,
+        headers: body.getHeaders(),
+      }
+    )
+
+    if (!upload_response) {
+      throw new FabDeployError(`Error uploading the service, got response:
+        ❤️${JSON.stringify(upload_response)}❤️`)
     }
   }
 
@@ -372,8 +340,7 @@ async function publishOnWorkersDev(
   api: CloudflareApi,
   account_id: string,
   script_name: string,
-  env_overrides: Map<string, FabSettings>,
-  defaultEnv: string
+  env_overrides: Map<string, FabSettings>
 ) {
   const subdomain_response = await api.get(`/accounts/${account_id}/workers/subdomain`)
   if (!subdomain_response.success) {
@@ -394,10 +361,6 @@ async function publishOnWorkersDev(
     if (!publish_response.success) {
       throw new FabDeployError(`Error publishing the script on a workers.dev subdomain, got response:
         ❤️${JSON.stringify(publish_response)}❤️`)
-    }
-
-    if (env === defaultEnv) {
-      urls.push(`https://${script_name}.${subdomain}.workers.dev`)
     }
 
     urls.push(`https://${env}.${script_name}.${subdomain}.workers.dev`)

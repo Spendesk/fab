@@ -10,7 +10,6 @@ export const deployServer: FabServerDeployer<ConfigTypes.AwsLambda> = async (
   working_dir: string,
   config: ConfigTypes.AwsLambda,
   env_overrides: Map<string, FabSettings>,
-  defaultEnv: undefined | string,
   assets_url: string
 ) => {
   // TODO, hash the FAB, figure out if we actually need to do this
