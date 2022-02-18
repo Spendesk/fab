@@ -39,7 +39,7 @@ function ReadableStream({ start, cancel }) {
 
 class Cache {
   async set(key, value, ttl_seconds) {
-    await KV_FAB_CACHE.put(
+    KV_FAB_CACHE.put(
       key,
       value,
       ttl_seconds ? { expirationTtl: ttl_seconds } : undefined
