@@ -6,7 +6,14 @@ import {
   FabSettings,
   getContentType,
 } from '@dev-spendesk/fab-core'
-import { CloudflareApi, getCloudflareApi, log } from './utils'
+import {
+  CloudflareApi,
+  createManifest,
+  getAssetManifest,
+  getChangedFiles,
+  getCloudflareApi,
+  log,
+} from './utils'
 import { FabDeployError, InvalidConfigError } from '@dev-spendesk/fab-cli'
 import { createPackage } from './createPackage'
 import path from 'path'
@@ -55,9 +62,20 @@ export const deployAssets: FabAssetsDeployer<ConfigTypes.CFWorkers> = async (
 
   const namespace = await api.getOrCreateNamespace(asset_namespace)
 
-  log(`Uploading files...`)
   const files = await globby(['_assets/**/*'], { cwd: extracted_dir })
-  const uploads = files.map(async (file) => {
+  const assetManifest = await getAssetManifest(api, account_id, namespace.id)
+  const changedFiles = getChangedFiles(assetManifest, files)
+  const skippedFilesCount = files.length - changedFiles.length
+
+  if (skippedFilesCount) {
+    log(`Found manifest. Skipping ${skippedFilesCount} file(s).`)
+  }
+
+  if (changedFiles.length) {
+    log(`Uploading files...`)
+  }
+
+  const uploads = changedFiles.map(async (file) => {
     const content_type = getContentType(file)
     const body_stream = fs.createReadStream(path.join(extracted_dir, file))
 
@@ -85,11 +103,35 @@ export const deployAssets: FabAssetsDeployer<ConfigTypes.CFWorkers> = async (
     }
 
     log.continue(`🖤  ${file} (${pretty(body_stream.bytesRead)})🖤`)
+
+    return file
   })
 
-  await Promise.all(uploads)
+  const results = await Promise.allSettled(uploads)
 
-  log.tick(`Done.`)
+  if (changedFiles.length) {
+    log.tick(`Done.`)
+  }
+
+  const newFiles: string[] = []
+  const errors: any[] = []
+  results.forEach((result) => {
+    if (result.status === 'fulfilled') {
+      newFiles.push(result.value)
+    } else {
+      errors.push(result.reason)
+    }
+  })
+
+  if (newFiles.length) {
+    log(`Creating manifest with ${newFiles.length} new file(s).`)
+    await createManifest(api, account_id, namespace.id, assetManifest, newFiles)
+  }
+
+  if (errors.length) {
+    throw new FabDeployError(`Error uploading assets:
+    ${JSON.stringify(errors)}`)
+  }
 
   return `kv://${namespace.id}`
 }
